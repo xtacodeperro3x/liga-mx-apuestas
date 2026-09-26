@@ -6,6 +6,7 @@ import { TablaGoleadores } from './TablaGoleadores';
 import { CreadorParlay } from './CreadorParlay';
 import { TablaAsistidores } from './TablaAsistidores';
 import { ImportadorBoleto } from './ImportadorBoleto';
+import { BoletosSugeridos } from './BoletosSugeridos';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -176,6 +177,7 @@ export function App() {
     {isLoading && <p className="mb-5 rounded-xl bg-slate-900 p-4 text-slate-300">Cargando datos reales de la jornada...</p>}
     {error && <div className="mb-5 rounded-xl border border-red-800 bg-red-950 p-4 text-red-200"><p className="font-semibold">No pudimos cargar la jornada</p><p className="mt-1 text-sm">{error}</p><p className="mt-2 text-xs text-red-300">Verifica la conexión del backend y la configuración de la API deportiva.</p></div>}
     <ApuestaRecomendada partidos={partidos} onCargar={cargarRecomendacion} />
+    <BoletosSugeridos partidos={partidos} />
     <CreadorParlay partidos={partidos} api={api} />
     <div className="grid gap-6 lg:grid-cols-[1fr_330px]">
       <section><div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Partidos analizados</h2><span className="text-sm text-slate-400">{partidos.length} encuentros</span></div>{!isLoading && !error && partidos.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900 p-5 text-slate-400">No hay partidos disponibles para la jornada actual.</p>}<div className="grid gap-5 md:grid-cols-2">{Array.isArray(partidos) && partidos.map((partido) => <TarjetaPartido key={`${partido.local}-${partido.visitante}`} partido={partido} />)}</div></section>
