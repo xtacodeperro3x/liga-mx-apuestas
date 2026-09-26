@@ -5,5 +5,12 @@
     "instalar": "npm install --workspaces",
     "probar": "npm test --workspaces"
   },
-  "workspaces": ["backend", "frontend"]
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "dependencies": {
+    "@neon/config": "^1.8.2",
+    "@neon/env": "^1.4.7"
+  }
 }
