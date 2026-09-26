@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/servidor.ts",
     "build": "tsc",
+    "start": "node dist/servidor.js",
     "test": "vitest run",
     "db:push": "prisma db push",
     "prisma:generate": "prisma generate"
