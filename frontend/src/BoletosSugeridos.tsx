@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 type Seleccion = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'unoX' | 'X2' | 'doce';
 
 type Partido = {
@@ -15,6 +17,7 @@ type Partido = {
   probabilidadOver7_5RematesPuerta: number;
   probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number };
   cuotas: Array<{ seleccion: Seleccion; cuota: number }>;
+  marcador: { local: number; visitante: number } | null;
 };
 
 type Candidato = {
@@ -74,21 +77,28 @@ function nombreClase(tipo: string) {
 }
 
 export function BoletosSugeridos({ partidos }: { partidos: Partido[] }) {
-  const opciones = candidatos(partidos);
+  const [partidoId, setPartidoId] = useState(partidos[0]?.externoId ?? '');
+  const partidoSeleccionado = partidos.find((partido) => partido.externoId === partidoId) ?? partidos[0];
+  const opciones = candidatos(partidoSeleccionado ? [partidoSeleccionado] : []);
   const conservador = mejorCercano(opciones.filter((opcion) => opcion.probabilidad >= 0.7), 0.8, 1.5);
   const intermedio = mejorCercano(opciones.filter((opcion) => opcion.probabilidad >= 0.35 && opcion.probabilidad <= 0.7 && ['unoX', 'X2', 'doce'].includes(opcion.seleccion)), 0.5, 2);
-  const arriesgadas = opciones.filter((opcion) => opcion.probabilidad >= 0.62 && opcion.partido.estado !== 'finalizado');
-  const combinada = arriesgadas.filter((opcion, indice, lista) => lista.findIndex((otra) => otra.partido.externoId === opcion.partido.externoId) === indice).slice(0, 3);
+  const arriesgadas = opciones.filter((opcion) => opcion.probabilidad >= 0.62);
+  const combinada = arriesgadas.slice(0, 3);
   const boletos = [
     conservador ? { tipo: 'Conservador', objetivo: '≈80%', selecciones: [conservador], cuotaObjetivo: 1.5 } : null,
     intermedio ? { tipo: 'Intermedio', objetivo: '≈50%', selecciones: [intermedio], cuotaObjetivo: 2 } : null,
     combinada.length >= 3 ? { tipo: 'Arriesgado', objetivo: '≥30% conjunta', selecciones: combinada, cuotaObjetivo: combinada.reduce((total) => total * 1.5, 1) } : null
   ].filter((boleto): boleto is NonNullable<typeof boleto> => Boolean(boleto));
 
+  if (!partidoSeleccionado) return null;
   return <section className="mb-6 rounded-2xl border border-fuchsia-700 bg-slate-900 p-5 shadow-xl">
     <p className="text-xs font-bold uppercase tracking-[0.25em] text-fuchsia-300">Oráculo de boletos</p>
     <h2 className="mt-1 text-2xl font-black">Tres rutas para tu apuesta</h2>
-    <p className="mt-1 text-sm text-slate-400">La probabilidad es del modelo; el momio debe confirmarse en la casa antes de apostar. No existe garantía de acierto.</p>
+    <p className="mt-1 text-sm text-slate-400">Selecciona un partido para comparar sus tres rutas. La probabilidad es del modelo; el momio debe confirmarse en la casa.</p>
+    <select value={partidoSeleccionado.externoId} onChange={(evento) => setPartidoId(evento.target.value)} className="field mt-4 max-w-xl">
+      {partidos.map((partido) => <option key={partido.externoId} value={partido.externoId}>{partido.local} vs {partido.visitante}{partido.estado === 'finalizado' ? ' · Finalizado' : ''}</option>)}
+    </select>
+    {partidoSeleccionado.estado === 'finalizado' && partidoSeleccionado.marcador && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-800 p-3 text-sm text-slate-300">Este partido ya terminó: <strong className="text-white">{partidoSeleccionado.local} {partidoSeleccionado.marcador.local} - {partidoSeleccionado.marcador.visitante} {partidoSeleccionado.visitante}</strong>. Las rutas son retrospectivas.</div>}
     <div className="mt-5 grid gap-4 lg:grid-cols-3">
       {boletos.map((boleto) => {
         const probabilidad = boleto.selecciones.reduce((total, seleccion) => total * seleccion.probabilidad, 1);
