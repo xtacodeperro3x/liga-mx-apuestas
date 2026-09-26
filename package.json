@@ -1,0 +1,9 @@
+{
+  "name": "liga-mx-apuestas",
+  "private": true,
+  "scripts": {
+    "instalar": "npm install --workspaces",
+    "probar": "npm test --workspaces"
+  },
+  "workspaces": ["backend", "frontend"]
+}

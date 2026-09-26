@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body { margin: 0; background: #f8fafc; font-family: Inter, system-ui, sans-serif; }
+.field { margin-top: .35rem; width: 100%; border-radius: .65rem; border: 1px solid #334155; background: #0f172a; padding: .65rem; color: #f8fafc; outline: none; }
+.field:focus { border-color: #22d3ee; }
+.live-dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 9999px; background: #f43f5e; animation: pulse-live 1.3s infinite; }
+.neon-value { border-color: #34d399; background: rgba(6, 78, 59, .45); box-shadow: 0 0 16px rgba(52, 211, 153, .25); color: #a7f3d0; }
+@keyframes pulse-live { 50% { opacity: .25; transform: scale(.75); } }

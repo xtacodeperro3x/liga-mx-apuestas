@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Equipo {
+  id          Int          @id @default(autoincrement())
+  nombre      String       @unique
+  partidosLocal Partido[]  @relation("equipoLocal")
+  partidosVisitante Partido[] @relation("equipoVisitante")
+  estadisticas EstadisticaEquipo[]
+}
+
+model Partido {
+  id              Int      @id @default(autoincrement())
+  externoId       String   @unique
+  fecha           DateTime
+  equipoLocalId   Int
+  equipoVisitanteId Int
+  golesLocal      Int?
+  golesVisitante  Int?
+  equipoLocal     Equipo @relation("equipoLocal", fields: [equipoLocalId], references: [id])
+  equipoVisitante Equipo @relation("equipoVisitante", fields: [equipoVisitanteId], references: [id])
+  cuotas          Cuota[]
+  boletosHistoricos BoletoHistorico[]
+}
+
+model EstadisticaEquipo {
+  id             Int      @id @default(autoincrement())
+  equipoId       Int
+  fechaCorte     DateTime
+  golesFavor     Float
+  golesContra    Float
+  partidos       Int
+  xG             Float?
+  posesion       Float?
+  tirosAPuerta   Int?
+  promedioCorners Float?
+  promedioRemates Float?
+  equipo         Equipo @relation(fields: [equipoId], references: [id])
+  @@unique([equipoId, fechaCorte])
+}
+
+model Cuota {
+  id         Int      @id @default(autoincrement())
+  partidoId  Int
+  casa       String
+  mercado    String
+  seleccion  String
+  cuota      Float
+  actualizadoEn DateTime @default(now())
+  partido    Partido @relation(fields: [partidoId], references: [id])
+}
+
+model BoletoHistorico {
+  id              Int      @id @default(autoincrement())
+  partidoId       Int
+  fecha           DateTime @default(now())
+  seleccion       String
+  cuota           Float
+  montoApostado   Float
+  valorEsperado   Float
+  estado          String   @default("Pendiente")
+  retornoNeto     Float?
+  partido         Partido  @relation(fields: [partidoId], references: [id])
+  @@index([partidoId, estado])
+}
