@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-type Seleccion = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'unoX' | 'X2' | 'doce';
+type Seleccion = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante' | 'unoX' | 'X2' | 'doce';
 
 type Partido = {
   externoId: string;
@@ -15,6 +15,10 @@ type Partido = {
   probabilidadOver10_5Corners: number;
   probabilidadOver20_5Remates: number;
   probabilidadOver7_5RematesPuerta: number;
+  probabilidadOver10_5RematesLocal: number;
+  probabilidadOver10_5RematesVisitante: number;
+  probabilidadOver3_5RematesPuertaLocal: number;
+  probabilidadOver3_5RematesPuertaVisitante: number;
   probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number };
   cuotas: Array<{ seleccion: Seleccion; cuota: number }>;
   marcador: { local: number; visitante: number } | null;
@@ -28,7 +32,7 @@ type Candidato = {
   cuotaPublicada: boolean;
 };
 
-const mercados: Seleccion[] = ['local', 'empate', 'visitante', 'over25', 'ambosAnotan', 'over8_5Corners', 'over9_5Corners', 'over10_5Corners', 'over20_5Remates', 'over7_5RematesPuerta', 'unoX', 'X2', 'doce'];
+const mercados: Seleccion[] = ['local', 'empate', 'visitante', 'over25', 'ambosAnotan', 'over8_5Corners', 'over9_5Corners', 'over10_5Corners', 'over20_5Remates', 'over7_5RematesPuerta', 'over10_5RematesLocal', 'over10_5RematesVisitante', 'over3_5RematesPuertaLocal', 'over3_5RematesPuertaVisitante', 'unoX', 'X2', 'doce'];
 
 function etiqueta(seleccion: Seleccion, partido: Partido) {
   if (seleccion === 'local') return `Local (${partido.local})`;
@@ -45,6 +49,10 @@ function etiqueta(seleccion: Seleccion, partido: Partido) {
     over10_5Corners: 'Más de 10.5 córners',
     over20_5Remates: 'Más de 20.5 remates',
     over7_5RematesPuerta: 'Más de 7.5 remates a puerta'
+    ,over10_5RematesLocal: `Más de 10.5 remates (${partido.local})`
+    ,over10_5RematesVisitante: `Más de 10.5 remates (${partido.visitante})`
+    ,over3_5RematesPuertaLocal: `Más de 3.5 remates a puerta (${partido.local})`
+    ,over3_5RematesPuertaVisitante: `Más de 3.5 remates a puerta (${partido.visitante})`
   }[seleccion];
 }
 
@@ -59,6 +67,10 @@ function candidatos(partidos: Partido[]): Candidato[] {
       over10_5Corners: partido.probabilidadOver10_5Corners,
       over20_5Remates: partido.probabilidadOver20_5Remates,
       over7_5RematesPuerta: partido.probabilidadOver7_5RematesPuerta,
+      over10_5RematesLocal: partido.probabilidadOver10_5RematesLocal,
+      over10_5RematesVisitante: partido.probabilidadOver10_5RematesVisitante,
+      over3_5RematesPuertaLocal: partido.probabilidadOver3_5RematesPuertaLocal,
+      over3_5RematesPuertaVisitante: partido.probabilidadOver3_5RematesPuertaVisitante,
       unoX: partido.probabilidadDobleOportunidad.unoX,
       X2: partido.probabilidadDobleOportunidad.X2,
       doce: partido.probabilidadDobleOportunidad.doce

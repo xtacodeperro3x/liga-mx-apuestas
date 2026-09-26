@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export type SeleccionParlay = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'unoX' | 'X2' | 'doce';
+export type SeleccionParlay = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante' | 'unoX' | 'X2' | 'doce';
 
 type PartidoParlay = {
   externoId: string;
@@ -40,6 +40,10 @@ function nombreSeleccion(seleccion: SeleccionParlay, partido?: PartidoParlay): s
   over10_5Corners: 'Más de 10.5 córners',
   over20_5Remates: 'Más de 20.5 remates totales',
   over7_5RematesPuerta: 'Más de 7.5 remates a puerta'
+  ,over10_5RematesLocal: 'Más de 10.5 remates del local'
+  ,over10_5RematesVisitante: 'Más de 10.5 remates del visitante'
+  ,over3_5RematesPuertaLocal: 'Más de 3.5 remates a puerta del local'
+  ,over3_5RematesPuertaVisitante: 'Más de 3.5 remates a puerta del visitante'
   }[seleccion];
 }
 

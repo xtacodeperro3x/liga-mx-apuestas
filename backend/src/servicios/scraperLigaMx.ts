@@ -51,7 +51,7 @@ export type PartidoRaspado = {
   visitante: string;
   golesLocal: number | null;
   golesVisitante: number | null;
-  cuotas: Array<{ casa: string; mercado: string; seleccion: 'local' | 'empate' | 'visitante' | 'ambosAnotan'; cuota: number }>;
+  cuotas: Array<{ casa: string; mercado: string; seleccion: 'local' | 'empate' | 'visitante' | 'ambosAnotan' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante'; cuota: number }>;
 };
 
 function numero(texto: string): number | null {
@@ -514,7 +514,7 @@ export async function rasparCalendario(): Promise<PartidoRaspado[]> {
         cuotas: extraerCuotas($, fila, unicos[1], unicos[0])
       };
         partidos.push(partido);
-        if (enlace && partido.estado !== 'programado') enlacesDetalle.push({ partido, enlace });
+        if (enlace && (partido.estado !== 'programado' || fecha.getTime() < Date.now() - 2 * 60 * 60 * 1000)) enlacesDetalle.push({ partido, enlace });
       });
     });
   });
@@ -571,7 +571,13 @@ export async function rasparCalendario(): Promise<PartidoRaspado[]> {
 
   if (!partidos.length) throw new Error('ESPN no devolvió partidos compatibles en su calendario.');
   const unicos = [...new Map(partidos.map((partido) => [partido.externoId, partido])).values()]
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((partido) => {
+      if (partido.estado === 'programado' && new Date(partido.fecha).getTime() < Date.now() - 2 * 60 * 60 * 1000) {
+        return { ...partido, estado: 'finalizado' as const, minuto: 90 };
+      }
+      return partido;
+    });
   console.log('Equipos extraídos del calendario Liga MX:', unicos.flatMap((partido) => [partido.local, partido.visitante]));
   return unicos;
 }

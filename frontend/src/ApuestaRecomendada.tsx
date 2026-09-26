@@ -1,4 +1,4 @@
-type SeleccionRecomendada = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'unoX' | 'X2' | 'doce';
+type SeleccionRecomendada = 'local' | 'empate' | 'visitante' | 'over25' | 'ambosAnotan' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante' | 'unoX' | 'X2' | 'doce';
 
 type PartidoRecomendable = {
   local: string;
@@ -11,6 +11,10 @@ type PartidoRecomendable = {
   probabilidadOver10_5Corners: number;
   probabilidadOver20_5Remates: number;
   probabilidadOver7_5RematesPuerta: number;
+  probabilidadOver10_5RematesLocal: number;
+  probabilidadOver10_5RematesVisitante: number;
+  probabilidadOver3_5RematesPuertaLocal: number;
+  probabilidadOver3_5RematesPuertaVisitante: number;
   probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number };
   cuotas: Array<{ seleccion: SeleccionRecomendada; cuota: number }>;
 };
@@ -35,6 +39,10 @@ function nombreSeleccion(seleccion: SeleccionRecomendada, partido: PartidoRecome
   over10_5Corners: 'Más de 10.5 Córners',
   over20_5Remates: 'Más de 20.5 Remates totales',
   over7_5RematesPuerta: 'Más de 7.5 Remates a puerta'
+  ,over10_5RematesLocal: 'Más de 10.5 Remates del local'
+  ,over10_5RematesVisitante: 'Más de 10.5 Remates del visitante'
+  ,over3_5RematesPuertaLocal: 'Más de 3.5 Remates a puerta del local'
+  ,over3_5RematesPuertaVisitante: 'Más de 3.5 Remates a puerta del visitante'
   }[seleccion];
 }
 
@@ -49,6 +57,10 @@ export function ApuestaRecomendada({ partidos, onCargar }: Props) {
       over10_5Corners: partido.probabilidadOver10_5Corners,
       over20_5Remates: partido.probabilidadOver20_5Remates,
       over7_5RematesPuerta: partido.probabilidadOver7_5RematesPuerta,
+      over10_5RematesLocal: partido.probabilidadOver10_5RematesLocal,
+      over10_5RematesVisitante: partido.probabilidadOver10_5RematesVisitante,
+      over3_5RematesPuertaLocal: partido.probabilidadOver3_5RematesPuertaLocal,
+      over3_5RematesPuertaVisitante: partido.probabilidadOver3_5RematesPuertaVisitante,
       unoX: partido.probabilidadDobleOportunidad.unoX,
       X2: partido.probabilidadDobleOportunidad.X2,
       doce: partido.probabilidadDobleOportunidad.doce

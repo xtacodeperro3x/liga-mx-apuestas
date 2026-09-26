@@ -23,6 +23,10 @@ export type ResultadoMonteCarlo = {
   probabilidadOver10_5Corners: number;
   probabilidadOver20_5Remates: number;
   probabilidadOver7_5RematesPuerta: number;
+  probabilidadOver10_5RematesLocal: number;
+  probabilidadOver10_5RematesVisitante: number;
+  probabilidadOver3_5RematesPuertaLocal: number;
+  probabilidadOver3_5RematesPuertaVisitante: number;
   probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number };
 };
 
@@ -33,7 +37,7 @@ export type SeguimientoEnVivo = {
   ausencias?: { local: string[]; visitante: string[] };
 };
 
-export type SeleccionMercado = 'local' | 'empate' | 'visitante' | 'over25' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'ambosAnotan' | 'unoX' | 'X2' | 'doce';
+export type SeleccionMercado = 'local' | 'empate' | 'visitante' | 'over25' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante' | 'ambosAnotan' | 'unoX' | 'X2' | 'doce';
 
 function muestrearPoisson(media: number): number {
   const limite = Math.exp(-media);
@@ -57,7 +61,7 @@ function calcularMediaOfensiva(equipo: PosicionLiga, rival: PosicionLiga): numbe
   return limitarMedia(((promedioGoles * 0.55) + (ajusteXG * 0.45)) * ajustePuntos);
 }
 
-function cumpleSeleccion(seleccion: SeleccionMercado, golesLocal: number, golesVisitante: number, cornersTotales: number, rematesTotales: number, rematesPuertaTotales: number): boolean {
+function cumpleSeleccion(seleccion: SeleccionMercado, golesLocal: number, golesVisitante: number, cornersTotales: number, rematesTotales: number, rematesPuertaTotales: number, rematesLocal: number, rematesVisitante: number, rematesPuertaLocal: number, rematesPuertaVisitante: number): boolean {
   switch (seleccion) {
     case 'local': return golesLocal > golesVisitante;
     case 'empate': return golesLocal === golesVisitante;
@@ -68,6 +72,10 @@ function cumpleSeleccion(seleccion: SeleccionMercado, golesLocal: number, golesV
     case 'over10_5Corners': return cornersTotales > 10.5;
     case 'over20_5Remates': return rematesTotales > 20.5;
     case 'over7_5RematesPuerta': return rematesPuertaTotales > 7.5;
+    case 'over10_5RematesLocal': return rematesLocal > 10.5;
+    case 'over10_5RematesVisitante': return rematesVisitante > 10.5;
+    case 'over3_5RematesPuertaLocal': return rematesPuertaLocal > 3.5;
+    case 'over3_5RematesPuertaVisitante': return rematesPuertaVisitante > 3.5;
     case 'ambosAnotan': return golesLocal > 0 && golesVisitante > 0;
     case 'unoX': return golesLocal >= golesVisitante;
     case 'X2': return golesVisitante >= golesLocal;
@@ -104,9 +112,13 @@ export function calcularInterseccionMonteCarlo(
     const golesLocal = marcadorLocal + muestrearPoisson(mediasBase.local * proporcionRestante);
     const golesVisitante = marcadorVisitante + muestrearPoisson(mediasBase.visitante * proporcionRestante);
     const cornersTotales = muestrearPoisson(mediaCornersLocal) + muestrearPoisson(mediaCornersVisitante);
-    const rematesTotales = muestrearPoisson(mediaRematesLocal) + muestrearPoisson(mediaRematesVisitante);
-    const rematesPuertaTotales = muestrearPoisson(mediaRematesPuertaLocal) + muestrearPoisson(mediaRematesPuertaVisitante);
-    if (selecciones.every((seleccion) => cumpleSeleccion(seleccion, golesLocal, golesVisitante, cornersTotales, rematesTotales, rematesPuertaTotales))) favorables += 1;
+    const rematesPuertaLocal = muestrearPoisson(mediaRematesPuertaLocal);
+    const rematesPuertaVisitante = muestrearPoisson(mediaRematesPuertaVisitante);
+    const rematesPuertaTotales = rematesPuertaLocal + rematesPuertaVisitante;
+    const rematesLocal = muestrearPoisson(mediaRematesLocal);
+    const rematesVisitante = muestrearPoisson(mediaRematesVisitante);
+    const rematesTotales = rematesLocal + rematesVisitante;
+    if (selecciones.every((seleccion) => cumpleSeleccion(seleccion, golesLocal, golesVisitante, cornersTotales, rematesTotales, rematesPuertaTotales, rematesLocal, rematesVisitante, rematesPuertaLocal, rematesPuertaVisitante))) favorables += 1;
   }
   return favorables / iteraciones;
 }
@@ -147,6 +159,10 @@ export function simularPartidoMonteCarlo(
   let over10_5Corners = 0;
   let over20_5Remates = 0;
   let over7_5RematesPuerta = 0;
+  let over10_5RematesLocal = 0;
+  let over10_5RematesVisitante = 0;
+  let over3_5RematesPuertaLocal = 0;
+  let over3_5RematesPuertaVisitante = 0;
   const mediaCornersLocal = Math.max(0.05, local.promedioCorners ?? 4.5) * proporcionRestante;
   const mediaCornersVisitante = Math.max(0.05, visitante.promedioCorners ?? 4.5) * proporcionRestante;
   const mediaRematesLocal = Math.max(0.05, local.promedioRemates ?? 11) * proporcionRestante;
@@ -165,10 +181,18 @@ export function simularPartidoMonteCarlo(
     if (cornersTotales > 8.5) over8_5Corners += 1;
     if (cornersTotales > 9.5) over9_5Corners += 1;
     if (cornersTotales > 10.5) over10_5Corners += 1;
-    const rematesTotales = muestrearPoisson(mediaRematesLocal) + muestrearPoisson(mediaRematesVisitante);
-    const rematesPuertaTotales = muestrearPoisson(mediaRematesPuertaLocal) + muestrearPoisson(mediaRematesPuertaVisitante);
+    const rematesLocal = muestrearPoisson(mediaRematesLocal);
+    const rematesVisitante = muestrearPoisson(mediaRematesVisitante);
+    const rematesTotales = rematesLocal + rematesVisitante;
+    const rematesPuertaLocal = muestrearPoisson(mediaRematesPuertaLocal);
+    const rematesPuertaVisitante = muestrearPoisson(mediaRematesPuertaVisitante);
+    const rematesPuertaTotales = rematesPuertaLocal + rematesPuertaVisitante;
     if (rematesTotales > 20.5) over20_5Remates += 1;
     if (rematesPuertaTotales > 7.5) over7_5RematesPuerta += 1;
+    if (rematesLocal > 10.5) over10_5RematesLocal += 1;
+    if (rematesVisitante > 10.5) over10_5RematesVisitante += 1;
+    if (rematesPuertaLocal > 3.5) over3_5RematesPuertaLocal += 1;
+    if (rematesPuertaVisitante > 3.5) over3_5RematesPuertaVisitante += 1;
     if (golesLocal > golesVisitante) victoriasLocal += 1;
     else if (golesLocal === golesVisitante) empates += 1;
     else victoriasVisitante += 1;
@@ -192,6 +216,10 @@ export function simularPartidoMonteCarlo(
     probabilidadOver10_5Corners: over10_5Corners / iteraciones,
     probabilidadOver20_5Remates: over20_5Remates / iteraciones,
     probabilidadOver7_5RematesPuerta: over7_5RematesPuerta / iteraciones,
+    probabilidadOver10_5RematesLocal: over10_5RematesLocal / iteraciones,
+    probabilidadOver10_5RematesVisitante: over10_5RematesVisitante / iteraciones,
+    probabilidadOver3_5RematesPuertaLocal: over3_5RematesPuertaLocal / iteraciones,
+    probabilidadOver3_5RematesPuertaVisitante: over3_5RematesPuertaVisitante / iteraciones,
     probabilidadDobleOportunidad: {
       unoX: (victoriasLocal + empates) / iteraciones,
       X2: (empates + victoriasVisitante) / iteraciones,

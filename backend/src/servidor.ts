@@ -167,6 +167,10 @@ aplicacion.post('/api/apuestas-combinadas/calcular', async (solicitud, respuesta
           over10_5Corners: simulacion.probabilidadOver10_5Corners,
           over20_5Remates: simulacion.probabilidadOver20_5Remates,
           over7_5RematesPuerta: simulacion.probabilidadOver7_5RematesPuerta,
+          over10_5RematesLocal: simulacion.probabilidadOver10_5RematesLocal,
+          over10_5RematesVisitante: simulacion.probabilidadOver10_5RematesVisitante,
+          over3_5RematesPuertaLocal: simulacion.probabilidadOver3_5RematesPuertaLocal,
+          over3_5RematesPuertaVisitante: simulacion.probabilidadOver3_5RematesPuertaVisitante,
           unoX: simulacion.probabilidadDobleOportunidad.unoX,
           X2: simulacion.probabilidadDobleOportunidad.X2,
           doce: simulacion.probabilidadDobleOportunidad.doce

@@ -36,6 +36,10 @@ export async function obtenerPartidos(): Promise<PartidoFuente[]> {
       { casa: 'ESPN/mercado publicado', mercado: 'corners', seleccion: 'over10_5Corners', cuota: 1.0 },
       { casa: 'ESPN/mercado publicado', mercado: 'remates', seleccion: 'over20_5Remates', cuota: 1.0 },
       { casa: 'ESPN/mercado publicado', mercado: 'remates_puerta', seleccion: 'over7_5RematesPuerta', cuota: 1.0 },
+      { casa: 'ESPN/mercado publicado', mercado: 'remates_local', seleccion: 'over10_5RematesLocal', cuota: 1.0 },
+      { casa: 'ESPN/mercado publicado', mercado: 'remates_visitante', seleccion: 'over10_5RematesVisitante', cuota: 1.0 },
+      { casa: 'ESPN/mercado publicado', mercado: 'remates_puerta_local', seleccion: 'over3_5RematesPuertaLocal', cuota: 1.0 },
+      { casa: 'ESPN/mercado publicado', mercado: 'remates_puerta_visitante', seleccion: 'over3_5RematesPuertaVisitante', cuota: 1.0 },
       { casa: 'ESPN/mercado publicado', mercado: 'doble_oportunidad', seleccion: 'unoX', cuota: 1.0 },
       { casa: 'ESPN/mercado publicado', mercado: 'doble_oportunidad', seleccion: 'X2', cuota: 1.0 },
       { casa: 'ESPN/mercado publicado', mercado: 'doble_oportunidad', seleccion: 'doce', cuota: 1.0 }

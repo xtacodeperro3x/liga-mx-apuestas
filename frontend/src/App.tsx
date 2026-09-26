@@ -10,14 +10,14 @@ import { BoletosSugeridos } from './BoletosSugeridos';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-type Seleccion = 'local' | 'empate' | 'visitante' | 'over25' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'ambosAnotan' | 'unoX' | 'X2' | 'doce';
+type Seleccion = 'local' | 'empate' | 'visitante' | 'over25' | 'over8_5Corners' | 'over9_5Corners' | 'over10_5Corners' | 'over20_5Remates' | 'over7_5RematesPuerta' | 'over10_5RematesLocal' | 'over10_5RematesVisitante' | 'over3_5RematesPuertaLocal' | 'over3_5RematesPuertaVisitante' | 'ambosAnotan' | 'unoX' | 'X2' | 'doce';
 type Apuesta = { seleccion: Seleccion; cuota: number; valorEsperado: number; esValueBet: boolean; fraccionKelly: number };
 type Partido = {
   externoId: string; local: string; visitante: string; jornada: number; estado: 'programado' | 'en_vivo' | 'finalizado'; minuto: number | null;
   marcador: { local: number; visitante: number } | null;
   marcadorEsperado: { local: number; visitante: number } | null;
   ausencias: { local: string[]; visitante: string[] };
-  probabilidades: { local: number; empate: number; visitante: number }; probabilidadOver25: number; probabilidadAmbosAnotan: number; probabilidadOver8_5Corners: number; probabilidadOver9_5Corners: number; probabilidadOver10_5Corners: number; probabilidadOver20_5Remates: number; probabilidadOver7_5RematesPuerta: number; probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number }; cuotas: Array<{ seleccion: Seleccion; cuota: number }>; apuestas: Apuesta[];
+  probabilidades: { local: number; empate: number; visitante: number }; probabilidadOver25: number; probabilidadAmbosAnotan: number; probabilidadOver8_5Corners: number; probabilidadOver9_5Corners: number; probabilidadOver10_5Corners: number; probabilidadOver20_5Remates: number; probabilidadOver7_5RematesPuerta: number; probabilidadOver10_5RematesLocal: number; probabilidadOver10_5RematesVisitante: number; probabilidadOver3_5RematesPuertaLocal: number; probabilidadOver3_5RematesPuertaVisitante: number; probabilidadDobleOportunidad: { unoX: number; X2: number; doce: number }; cuotas: Array<{ seleccion: Seleccion; cuota: number }>; apuestas: Apuesta[];
   estadisticas: { local: { forma?: string[] }; visitante: { forma?: string[] } };
 };
 type Posicion = { posicion: number; equipo: string; puntos: number; jugados: number; diferencia: number; forma?: string[] };
@@ -152,11 +152,15 @@ export function App() {
           : seleccion === 'over10_5Corners' ? partidoSeleccionado.probabilidadOver10_5Corners
             : seleccion === 'over20_5Remates' ? partidoSeleccionado.probabilidadOver20_5Remates
               : seleccion === 'over7_5RematesPuerta' ? partidoSeleccionado.probabilidadOver7_5RematesPuerta
+              : seleccion === 'over10_5RematesLocal' ? partidoSeleccionado.probabilidadOver10_5RematesLocal
+              : seleccion === 'over10_5RematesVisitante' ? partidoSeleccionado.probabilidadOver10_5RematesVisitante
+              : seleccion === 'over3_5RematesPuertaLocal' ? partidoSeleccionado.probabilidadOver3_5RematesPuertaLocal
+              : seleccion === 'over3_5RematesPuertaVisitante' ? partidoSeleccionado.probabilidadOver3_5RematesPuertaVisitante
             : seleccion === 'ambosAnotan' ? partidoSeleccionado.probabilidadAmbosAnotan
       : seleccion === 'unoX' ? partidoSeleccionado.probabilidadDobleOportunidad.unoX
         : seleccion === 'X2' ? partidoSeleccionado.probabilidadDobleOportunidad.X2
           : seleccion === 'doce' ? partidoSeleccionado.probabilidadDobleOportunidad.doce
-            : partidoSeleccionado.probabilidades[seleccion]
+            : partidoSeleccionado.probabilidades[seleccion as 'local' | 'empate' | 'visitante']
     : 0;
   const cuotaMercado = partidoSeleccionado?.cuotas?.find((cuota) => cuota.seleccion === seleccion)?.cuota ?? 1;
   const evaluacion = useMemo(() => partidoSeleccionado ? evaluarBoleto(seleccion, probabilidadSeleccion, cuotaMercado, Number(monto)) : null, [partidoSeleccionado, seleccion, probabilidadSeleccion, cuotaMercado, monto]);
