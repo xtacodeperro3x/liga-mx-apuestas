@@ -1,7 +1,8 @@
-import { rasparCalendario } from './scraperLigaMx.js';
+import { rasparCalendario, type Liga } from './scraper.js';
 import type { SeleccionMercado } from './simuladorMonteCarlo.js';
 
 export type PartidoFuente = {
+  liga: Liga;
   id?: number;
   externoId: string;
   fecha: string;
@@ -17,8 +18,8 @@ export type PartidoFuente = {
   cuotas: Array<{ casa: string; mercado: string; seleccion: SeleccionMercado; cuota: number }>;
 };
 
-export async function obtenerPartidos(): Promise<PartidoFuente[]> {
-  const partidos = await rasparCalendario();
+export async function obtenerPartidos(liga: Liga = 'LIGA_MX'): Promise<PartidoFuente[]> {
+  const partidos = await rasparCalendario(liga);
   const jornadasConNumero = partidos.map((partido) => partido.jornada).filter((jornada) => jornada > 0);
   const jornadaActual = jornadasConNumero[0];
   const matchweekSinNumeroCompleto = partidos.some((partido) => partido.jornada === 0);
@@ -27,6 +28,7 @@ export async function obtenerPartidos(): Promise<PartidoFuente[]> {
     : partidos;
   return seleccionados.map((partido) => ({
     ...partido,
+    liga,
     cuotas: [
       ...partido.cuotas,
       { casa: 'ESPN/mercado publicado', mercado: 'over_under', seleccion: 'over25', cuota: 1.0 },

@@ -2,10 +2,24 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
 
-const URL_POSICIONES_POR_DEFECTO = 'https://www.espn.com.mx/futbol/posiciones/_/liga/MEX.1';
-const URL_CALENDARIO_POR_DEFECTO = 'https://www.espn.com.mx/futbol/calendario/_/liga/MEX.1';
+export type Liga = 'LIGA_MX' | 'PREMIER_LEAGUE' | 'LA_LIGA' | 'SERIE_A';
+export const LIGAS: Record<Liga, { posiciones: string; calendario: string; estadisticas: string; marcador: string }> = {
+  LIGA_MX: { posiciones: 'MEX.1', calendario: 'MEX.1', estadisticas: 'MEX.1', marcador: 'mex.1' },
+  PREMIER_LEAGUE: { posiciones: 'ENG.1', calendario: 'ENG.1', estadisticas: 'ENG.1', marcador: 'eng.1' },
+  LA_LIGA: { posiciones: 'ESP.1', calendario: 'ESP.1', estadisticas: 'ESP.1', marcador: 'esp.1' },
+  SERIE_A: { posiciones: 'ITA.1', calendario: 'ITA.1', estadisticas: 'ITA.1', marcador: 'ita.1' }
+};
+export const LIGAS_DISPONIBLES = Object.keys(LIGAS) as Liga[];
 const URL_FBREF_POR_DEFECTO = 'https://fbref.com/en/comps/31/standard/Liga-MX-Stats';
-const URL_ESTADISTICAS_POR_DEFECTO = 'https://www.espn.com.mx/futbol/estadisticas/_/liga/MEX.1';
+function configuracionLiga(liga: Liga = 'LIGA_MX') {
+  const config = LIGAS[liga] ?? LIGAS.LIGA_MX;
+  return {
+    posiciones: process.env[`${liga}_POSICIONES_URL`] ?? `https://www.espn.com.mx/futbol/posiciones/_/liga/${config.posiciones}`,
+    calendario: process.env[`${liga}_CALENDARIO_URL`] ?? `https://www.espn.com.mx/futbol/calendario/_/liga/${config.calendario}`,
+    estadisticas: process.env[`${liga}_ESTADISTICAS_URL`] ?? `https://www.espn.com.mx/futbol/estadisticas/_/liga/${config.estadisticas}`,
+    marcador: config.marcador
+  };
+}
 const CABECERAS = {
   'User-Agent': 'Mozilla/5.0 (compatible; LigaMXAnalizador/1.0; +https://www.espn.com.mx/)',
   Accept: 'text/html,application/xhtml+xml'
@@ -59,7 +73,7 @@ function numero(texto: string): number | null {
   return limpio ? Number(limpio[0]) : null;
 }
 
-async function enriquecerFormaDesdeCalendario(tabla: PosicionRaspada[]) {
+async function enriquecerFormaDesdeCalendario(tabla: PosicionRaspada[], liga: Liga) {
   try {
     const formaPorEquipo = new Map<string, string[]>();
     const hoy = new Date();
@@ -69,7 +83,7 @@ async function enriquecerFormaDesdeCalendario(tabla: PosicionRaspada[]) {
       return `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}${String(fecha.getDate()).padStart(2, '0')}`;
     });
     const respuestas = await Promise.allSettled(fechas.map((fecha) => axios.get<{ events?: Array<{ date?: string; status?: { type?: { completed?: boolean } }; competitions?: Array<{ competitors?: Array<{ homeAway?: string; score?: string; team?: { displayName?: string } }> }> }> }>(
-      `https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard?dates=${fecha}&limit=100`,
+      `https://site.api.espn.com/apis/site/v2/sports/${configuracionLiga(liga).marcador}/scoreboard?dates=${fecha}&limit=100`,
       { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, timeout: 8_000 }
     )));
     const resultados: Array<{ fecha: string; equipo: string; resultado: string }> = [];
@@ -149,9 +163,9 @@ function extraerForma(celdas: string[]): string[] {
   return valores.map((valor) => valor.toUpperCase()).slice(-5);
 }
 
-export async function rasparGoleadores(): Promise<GoleadorRaspado[]> {
+export async function rasparGoleadores(liga: Liga = 'LIGA_MX'): Promise<GoleadorRaspado[]> {
   try {
-    const $ = await descargarHtml(process.env.LIGA_MX_ESTADISTICAS_URL ?? URL_ESTADISTICAS_POR_DEFECTO);
+    const $ = await descargarHtml(configuracionLiga(liga).estadisticas);
     const goleadores: GoleadorRaspado[] = [];
     $('table').each((_indice, tabla) => {
     const filas = $(tabla).find('tr');
@@ -176,9 +190,9 @@ export async function rasparGoleadores(): Promise<GoleadorRaspado[]> {
   }
 }
 
-export async function rasparAsistidores(): Promise<AsistidorRaspado[]> {
+export async function rasparAsistidores(liga: Liga = 'LIGA_MX'): Promise<AsistidorRaspado[]> {
     try {
-      const $ = await descargarHtml(process.env.LIGA_MX_ESTADISTICAS_URL ?? URL_ESTADISTICAS_POR_DEFECTO);
+      const $ = await descargarHtml(configuracionLiga(liga).estadisticas);
       const asistidores: AsistidorRaspado[] = [];
       $('table').each((_indice, tabla) => {
         const filas = $(tabla).find('tr');
@@ -230,8 +244,8 @@ function agregarTablaSeparada($: cheerio.CheerioAPI, resultados: PosicionRaspada
   });
 }
 
-export async function rasparTabla(): Promise<PosicionRaspada[]> {
-  const $ = await descargarHtml(process.env.LIGA_MX_POSICIONES_URL ?? URL_POSICIONES_POR_DEFECTO);
+export async function rasparTabla(liga: Liga = 'LIGA_MX'): Promise<PosicionRaspada[]> {
+  const $ = await descargarHtml(configuracionLiga(liga).posiciones);
   const resultados: PosicionRaspada[] = [];
 
   $('table').each((_indice, tabla) => {
@@ -269,7 +283,7 @@ export async function rasparTabla(): Promise<PosicionRaspada[]> {
   const unicos = [...new Map(resultados.map((fila) => [fila.equipo, fila])).values()];
   if (!unicos.length) throw new Error('ESPN no devolvió una tabla de posiciones compatible.');
   await enriquecerMetricasAvanzadas(unicos);
-  await enriquecerFormaDesdeCalendario(unicos);
+  await enriquecerFormaDesdeCalendario(unicos, liga);
   return unicos.sort((a, b) => a.posicion - b.posicion);
 }
 
@@ -479,8 +493,8 @@ async function extraerSeguimientoDetalle(url: string, local: string, visitante: 
   };
 }
 
-export async function rasparCalendario(): Promise<PartidoRaspado[]> {
-  const $ = await descargarHtml(process.env.LIGA_MX_CALENDARIO_URL ?? URL_CALENDARIO_POR_DEFECTO);
+export async function rasparCalendario(liga: Liga = 'LIGA_MX'): Promise<PartidoRaspado[]> {
+  const $ = await descargarHtml(configuracionLiga(liga).calendario);
   const partidos: PartidoRaspado[] = [];
   const enlacesDetalle: Array<{ partido: PartidoRaspado; enlace: string }> = [];
   $('.ScheduleTables').each((_indiceJornada, contenedorJornada) => {

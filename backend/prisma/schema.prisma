@@ -9,15 +9,18 @@ datasource db {
 
 model Equipo {
   id          Int          @id @default(autoincrement())
-  nombre      String       @unique
+  nombre      String
+  liga        String       @default("LIGA_MX")
   partidosLocal Partido[]  @relation("equipoLocal")
   partidosVisitante Partido[] @relation("equipoVisitante")
   estadisticas EstadisticaEquipo[]
+  @@unique([nombre, liga])
 }
 
 model Partido {
   id              Int      @id @default(autoincrement())
   externoId       String   @unique
+  liga            String   @default("LIGA_MX")
   fecha           DateTime
   equipoLocalId   Int
   equipoVisitanteId Int
@@ -59,6 +62,7 @@ model Cuota {
 model BoletoHistorico {
   id              Int      @id @default(autoincrement())
   partidoId       Int
+  liga            String   @default("LIGA_MX")
   fecha           DateTime @default(now())
   seleccion       String
   cuota           Float

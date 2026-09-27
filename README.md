@@ -10,7 +10,7 @@ Esqueleto full-stack para análisis estadístico y modelado de apuestas de la Li
 4. Ejecuta `npm run db:push --workspace backend`.
 5. Ejecuta `npm run dev --workspace backend` y `npm run dev --workspace frontend`.
 
-El backend raspa la tabla y el calendario públicos de ESPN Deportes mediante `axios` + `cheerio`; no requiere una clave de API. Las URLs se pueden ajustar con `LIGA_MX_POSICIONES_URL` y `LIGA_MX_CALENDARIO_URL`. La sincronización diaria se activa con `SINCRONIZACION_ACTIVA=true` y persiste tabla, estadísticas y calendario en Prisma.
+El backend raspa la tabla y el calendario públicos de ESPN Deportes mediante `axios` + `cheerio`; no requiere una clave de API. El dashboard permite alternar entre `LIGA_MX`, `PREMIER_LEAGUE`, `LA_LIGA` y `SERIE_A`; las rutas aceptan `?liga=` y el cron sincroniza las cuatro competiciones secuencialmente. Las URLs se pueden ajustar con variables como `PREMIER_LEAGUE_POSICIONES_URL` y `LIGA_MX_CALENDARIO_URL`. La sincronización automática se activa con `SINCRONIZACION_ACTIVA=true` y persiste la liga junto con tabla, estadísticas y calendario en Prisma.
 
 ## Publicar como página web
 

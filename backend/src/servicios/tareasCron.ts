@@ -3,6 +3,7 @@ import { guardarEstadisticas, guardarPartidos } from './persistencia.js';
 import { obtenerPartidos } from './proveedorDatos.js';
 import { obtenerTablaPosiciones } from './tablaPosiciones.js';
 import { resolverBoletosPendientes } from './ledgerBoletos.js';
+import { LIGAS_DISPONIBLES } from './scraper.js';
 
 let sincronizacionEnCurso = false;
 
@@ -13,10 +14,14 @@ export async function sincronizarJornada() {
   }
   sincronizacionEnCurso = true;
   try {
-    const [partidos, tabla] = await Promise.all([obtenerPartidos(), obtenerTablaPosiciones()]);
-    await Promise.all([guardarPartidos(partidos), guardarEstadisticas(tabla)]);
+    let totalPartidos = 0;
+    for (const liga of LIGAS_DISPONIBLES) {
+      const [partidos, tabla] = await Promise.all([obtenerPartidos(liga), obtenerTablaPosiciones(liga)]);
+      await Promise.all([guardarPartidos(partidos), guardarEstadisticas(tabla, new Date(), liga)]);
+      totalPartidos += partidos.length;
+    }
     await resolverBoletosPendientes();
-    console.info(`Cron: sincronizados ${partidos.length} partidos y cuotas.`);
+    console.info(`Cron multiliga: sincronizados ${totalPartidos} partidos y cuotas.`);
   } finally {
     sincronizacionEnCurso = false;
   }
@@ -26,5 +31,5 @@ export function iniciarTareasCron() {
   cron.schedule('*/5 * * * *', () => {
     sincronizarJornada().catch((error) => console.error('Error en la sincronización automática:', error));
   });
-  console.info('Cron de Liga MX activo: sincronización cada 5 minutos.');
+  console.info('Cron multiliga activo: sincronización cada 5 minutos.');
 }

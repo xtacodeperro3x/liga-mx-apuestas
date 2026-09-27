@@ -10,6 +10,7 @@ export type BoletoEntrada = {
   valorEsperado: number;
   estado?: 'Pendiente' | 'Ganado' | 'Perdido';
   retornoNeto?: number | null;
+  liga?: string;
 };
 
 function resultadoSeleccion(seleccion: string, golesLocal: number, golesVisitante: number): boolean {
@@ -40,6 +41,7 @@ export async function registrarBoleto(entrada: BoletoEntrada) {
       valorEsperado: entrada.valorEsperado,
       estado: entrada.estado ?? 'Pendiente',
       retornoNeto: entrada.retornoNeto ?? null
+      ,liga: entrada.liga ?? partido.liga
     },
     include: { partido: true }
   });
@@ -65,9 +67,9 @@ export async function resolverBoletosPendientes() {
   }
 }
 
-export async function obtenerRendimiento() {
+export async function obtenerRendimiento(liga?: string) {
   await resolverBoletosPendientes();
-  const boletos = await prisma.boletoHistorico.findMany({ orderBy: { fecha: 'desc' }, include: { partido: true } });
+  const boletos = await prisma.boletoHistorico.findMany({ where: liga ? { liga } : undefined, orderBy: { fecha: 'desc' }, include: { partido: true } });
   const resueltos = boletos.filter((boleto) => boleto.estado !== 'Pendiente');
   const apostado = resueltos.reduce((total, boleto) => total + boleto.montoApostado, 0);
   const retornoNeto = boletos.reduce((total, boleto) => total + (boleto.retornoNeto ?? 0), 0);

@@ -7,14 +7,14 @@ const prisma = new PrismaClient();
 export async function guardarPartidos(partidos: PartidoFuente[]) {
   for (const partido of partidos) {
     const local = await prisma.equipo.upsert({
-      where: { nombre: partido.local },
+      where: { nombre_liga: { nombre: partido.local, liga: partido.liga } },
       update: {},
-      create: { nombre: partido.local }
+      create: { nombre: partido.local, liga: partido.liga }
     });
     const visitante = await prisma.equipo.upsert({
-      where: { nombre: partido.visitante },
+      where: { nombre_liga: { nombre: partido.visitante, liga: partido.liga } },
       update: {},
-      create: { nombre: partido.visitante }
+      create: { nombre: partido.visitante, liga: partido.liga }
     });
     const guardado = await prisma.partido.upsert({
       where: { externoId: partido.externoId },
@@ -22,6 +22,7 @@ export async function guardarPartidos(partidos: PartidoFuente[]) {
         fecha: new Date(partido.fecha),
         golesLocal: partido.golesLocal,
         golesVisitante: partido.golesVisitante
+        ,liga: partido.liga
       },
       create: {
         externoId: partido.externoId,
@@ -30,6 +31,7 @@ export async function guardarPartidos(partidos: PartidoFuente[]) {
         equipoVisitanteId: visitante.id,
         golesLocal: partido.golesLocal,
         golesVisitante: partido.golesVisitante
+        ,liga: partido.liga
       }
     });
     await prisma.cuota.deleteMany({ where: { partidoId: guardado.id } });
@@ -41,12 +43,12 @@ export async function guardarPartidos(partidos: PartidoFuente[]) {
   }
 }
 
-export async function guardarEstadisticas(tabla: PosicionLiga[], fechaCorte = new Date()) {
+export async function guardarEstadisticas(tabla: PosicionLiga[], fechaCorte = new Date(), liga = 'LIGA_MX') {
   for (const fila of tabla) {
     const equipo = await prisma.equipo.upsert({
-      where: { nombre: fila.equipo },
+      where: { nombre_liga: { nombre: fila.equipo, liga } },
       update: {},
-      create: { nombre: fila.equipo }
+      create: { nombre: fila.equipo, liga }
     });
     await prisma.estadisticaEquipo.upsert({
       where: { equipoId_fechaCorte: { equipoId: equipo.id, fechaCorte } },

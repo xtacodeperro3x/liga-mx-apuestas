@@ -26,6 +26,13 @@ type Rendimiento = { total: number; resueltos: number; ganados: number; apostado
 type Goleador = { nombre: string; equipo: string; goles: number };
 type Asistidor = { nombre: string; equipo: string; asistencias: number };
 const api = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+type Liga = 'LIGA_MX' | 'PREMIER_LEAGUE' | 'LA_LIGA' | 'SERIE_A';
+const ligas: Array<{ clave: Liga; nombre: string }> = [
+  { clave: 'LIGA_MX', nombre: 'Liga MX' },
+  { clave: 'PREMIER_LEAGUE', nombre: 'Premier League' },
+  { clave: 'LA_LIGA', nombre: 'La Liga' },
+  { clave: 'SERIE_A', nombre: 'Serie A' }
+];
 const porcentaje = (valor: number) => `${(valor * 100).toFixed(1)}%`;
 
 function evaluarBoleto(seleccion: Seleccion, probabilidad: number, cuota: number, monto: number): Boleto | null {
@@ -37,8 +44,8 @@ function Forma({ valores }: { valores?: string[] }) {
   return <span className="ml-2 inline-flex items-center gap-1 align-middle" title="Últimos 5 partidos"><span className="text-[10px] font-normal text-slate-500">5:</span>{(valores ?? []).slice(-5).map((valor, indice) => <i key={`${valor}-${indice}`} title={valor === 'V' ? 'Victoria' : valor === 'E' ? 'Empate' : 'Derrota'} className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black not-italic text-slate-950 ${valor === 'V' ? 'bg-emerald-400' : valor === 'E' ? 'bg-slate-300' : 'bg-rose-400'}`}>{valor}</i>)}</span>;
 }
 
-async function exportarLatex(boletos: Boleto[]) {
-  const respuesta = await fetch(`${api}/exportar/reporte-latex`, {
+async function exportarLatex(boletos: Boleto[], liga: Liga) {
+  const respuesta = await fetch(`${api}/exportar/reporte-latex?liga=${liga}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ boletos })
@@ -52,8 +59,8 @@ async function exportarLatex(boletos: Boleto[]) {
   URL.revokeObjectURL(enlace.href);
 }
 
-async function exportarCsv() {
-  const respuesta = await fetch(`${api}/exportar/csv`);
+async function exportarCsv(liga: Liga) {
+  const respuesta = await fetch(`${api}/exportar/csv?liga=${liga}`);
   if (!respuesta.ok) throw new Error('No se pudo generar el reporte CSV desde el backend.');
   const archivo = await respuesta.blob();
   const enlace = document.createElement('a');
@@ -92,9 +99,10 @@ export function App() {
   const [goleadores, setGoleadores] = useState<Goleador[]>([]);
   const [asistidores, setAsistidores] = useState<Asistidor[]>([]);
   const [rendimiento, setRendimiento] = useState<{ boletos: Array<{ id: number; seleccion: string; cuota: number; montoApostado: number; estado: string; retornoNeto: number | null }>; resumen: Rendimiento }>({ boletos: [], resumen: { total: 0, resueltos: 0, ganados: 0, apostado: 0, retornoNeto: 0, roi: 0, yield: 0 } });
+  const [liga, setLiga] = useState<Liga>('LIGA_MX');
 
   const cargarRendimiento = async () => {
-    const respuesta = await fetch(`${api}/boletos/historial`);
+    const respuesta = await fetch(`${api}/boletos/historial?liga=${liga}`);
     if (respuesta.ok) setRendimiento(await respuesta.json() as typeof rendimiento);
   };
 
@@ -105,8 +113,8 @@ export function App() {
       setError('');
       try {
         const [respuestaPartidos, respuestaTabla] = await Promise.all([
-          fetch(`${api}/partidos/hoy`),
-          fetch(`${api}/tabla-posiciones`)
+          fetch(`${api}/partidos/hoy?liga=${liga}`),
+          fetch(`${api}/tabla-posiciones?liga=${liga}`)
         ]);
         const datosPartidos: unknown = await respuestaPartidos.json();
         const datosTabla: unknown = await respuestaTabla.json();
@@ -140,7 +148,7 @@ export function App() {
     void cargarDatos();
     void cargarRendimiento();
     return () => { montado = false; };
-  }, []);
+  }, [liga]);
 
   const partidoSeleccionado = Array.isArray(partidos)
     ? partidos.find((partido) => `${partido.local} vs ${partido.visitante}` === seleccionPartido)
@@ -179,7 +187,8 @@ export function App() {
   const partidosPasados = partidos.filter((partido) => partido.estado === 'finalizado');
 
   return <main className="min-h-screen bg-slate-950 text-slate-100"><div className="mx-auto max-w-7xl p-6">
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Liga MX · Dashboard cuantitativo</p><h1 className="mt-2 text-4xl font-black tracking-tight">Radar de valor</h1><p className="mt-2 text-slate-400">Jornada actual · Monte Carlo + cuotas de mercado</p></div><div className="flex flex-wrap gap-3"><button onClick={() => void exportarLatex(boletos).catch((fallo: Error) => setError(fallo.message))} className="rounded-xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300">Exportar reporte LaTeX</button><button onClick={() => void exportarCsv().catch((fallo: Error) => setError(fallo.message))} className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950 transition hover:bg-emerald-300">Descargar Excel (CSV)</button></div></header>
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{ligas.find((opcion) => opcion.clave === liga)?.nombre} · Dashboard cuantitativo</p><h1 className="mt-2 text-4xl font-black tracking-tight">Radar de valor</h1><p className="mt-2 text-slate-400">Jornada actual · Monte Carlo + cuotas de mercado</p></div><div className="flex flex-wrap gap-3"><button onClick={() => void exportarLatex(boletos, liga).catch((fallo: Error) => setError(fallo.message))} className="rounded-xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300">Exportar reporte LaTeX</button><button onClick={() => void exportarCsv(liga).catch((fallo: Error) => setError(fallo.message))} className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950 transition hover:bg-emerald-300">Descargar Excel (CSV)</button></div></header>
+    <nav className="mb-8 flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-2" aria-label="Seleccionar liga">{ligas.map((opcion) => <button key={opcion.clave} onClick={() => setLiga(opcion.clave)} className={`rounded-xl px-4 py-2 text-sm font-bold transition ${liga === opcion.clave ? 'bg-cyan-400 text-slate-950' : 'text-slate-300 hover:bg-slate-800'}`}>{opcion.nombre}</button>)}</nav>
     {isLoading && <p className="mb-5 rounded-xl bg-slate-900 p-4 text-slate-300">Cargando datos reales de la jornada...</p>}
     {error && <div className="mb-5 rounded-xl border border-red-800 bg-red-950 p-4 text-red-200"><p className="font-semibold">No pudimos cargar la jornada</p><p className="mt-1 text-sm">{error}</p><p className="mt-2 text-xs text-red-300">Verifica la conexión del backend y la configuración de la API deportiva.</p></div>}
     <ApuestaRecomendada partidos={partidosActuales} onCargar={cargarRecomendacion} />
