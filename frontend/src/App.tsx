@@ -25,6 +25,7 @@ type Boleto = { externoId?: string; partido: string; seleccion: Seleccion; cuota
 type Rendimiento = { total: number; resueltos: number; ganados: number; apostado: number; retornoNeto: number; roi: number; yield: number };
 type Goleador = { nombre: string; equipo: string; goles: number };
 type Asistidor = { nombre: string; equipo: string; asistencias: number };
+type DatosLiga = { partidos: Partido[]; tabla: Posicion[]; goleadores: Goleador[]; asistidores: Asistidor[] };
 const api = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 type Liga = 'LIGA_MX' | 'PREMIER_LEAGUE' | 'LA_LIGA' | 'SERIE_A';
 const ligas: Array<{ clave: Liga; nombre: string }> = [
@@ -100,6 +101,7 @@ export function App() {
   const [asistidores, setAsistidores] = useState<Asistidor[]>([]);
   const [rendimiento, setRendimiento] = useState<{ boletos: Array<{ id: number; seleccion: string; cuota: number; montoApostado: number; estado: string; retornoNeto: number | null }>; resumen: Rendimiento }>({ boletos: [], resumen: { total: 0, resueltos: 0, ganados: 0, apostado: 0, retornoNeto: 0, roi: 0, yield: 0 } });
   const [liga, setLiga] = useState<Liga>('LIGA_MX');
+  const [cacheLigas, setCacheLigas] = useState<Partial<Record<Liga, DatosLiga>>>({});
 
   const cargarRendimiento = async () => {
     const respuesta = await fetch(`${api}/boletos/historial?liga=${liga}`);
@@ -111,6 +113,15 @@ export function App() {
     const cargarDatos = async () => {
       setIsLoading(true);
       setError('');
+      const cache = cacheLigas[liga];
+      if (cache) {
+        setPartidos(cache.partidos);
+        setTabla(cache.tabla);
+        setGoleadores(cache.goleadores);
+        setAsistidores(cache.asistidores);
+        setIsLoading(false);
+        return;
+      }
       try {
         const [respuestaPartidos, respuestaTabla] = await Promise.all([
           fetch(`${api}/partidos/hoy?liga=${liga}`),
@@ -133,6 +144,13 @@ export function App() {
         setGoleadores(((datosPartidos[0] as Partido & { goleadores?: Goleador[] })?.goleadores ?? []));
         setAsistidores(((datosPartidos[0] as Partido & { asistidores?: Asistidor[] })?.asistidores ?? []));
         setTabla(datosTabla as Posicion[]);
+        const datosLiga = {
+          partidos: datosPartidos as Partido[],
+          tabla: datosTabla as Posicion[],
+          goleadores: (datosPartidos[0] as Partido & { goleadores?: Goleador[] })?.goleadores ?? [],
+          asistidores: (datosPartidos[0] as Partido & { asistidores?: Asistidor[] })?.asistidores ?? []
+        };
+        setCacheLigas((actual) => ({ ...actual, [liga]: datosLiga }));
         const primerPartido = datosPartidos[0] as Partido | undefined;
         if (primerPartido) setSeleccionPartido(`${primerPartido.local} vs ${primerPartido.visitante}`);
       } catch (fallo) {
@@ -148,7 +166,7 @@ export function App() {
     void cargarDatos();
     void cargarRendimiento();
     return () => { montado = false; };
-  }, [liga]);
+  }, [liga, cacheLigas]);
 
   const partidoSeleccionado = Array.isArray(partidos)
     ? partidos.find((partido) => `${partido.local} vs ${partido.visitante}` === seleccionPartido)
@@ -175,7 +193,7 @@ export function App() {
   const registrarBoleto = async () => {
     if (!evaluacion || !partidoSeleccionado) return;
     setBoletos((actuales) => [...actuales, { ...evaluacion, externoId: partidoSeleccionado.externoId, partido: seleccionPartido, seleccion }]);
-    const respuesta = await fetch(`${api}/boletos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ externoId: partidoSeleccionado.externoId, seleccion, cuota: evaluacion.cuota, montoApostado: evaluacion.monto, valorEsperado: evaluacion.ev }) });
+    const respuesta = await fetch(`${api}/boletos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ externoId: partidoSeleccionado.externoId, liga, seleccion, cuota: evaluacion.cuota, montoApostado: evaluacion.monto, valorEsperado: evaluacion.ev }) });
     if (respuesta.ok) await cargarRendimiento();
     else setError('No se pudo guardar el boleto en el historial.');
   };
@@ -193,7 +211,7 @@ export function App() {
     {error && <div className="mb-5 rounded-xl border border-red-800 bg-red-950 p-4 text-red-200"><p className="font-semibold">No pudimos cargar la jornada</p><p className="mt-1 text-sm">{error}</p><p className="mt-2 text-xs text-red-300">Verifica la conexión del backend y la configuración de la API deportiva.</p></div>}
     <ApuestaRecomendada partidos={partidosActuales} onCargar={cargarRecomendacion} />
     <BoletosSugeridos partidos={partidosActuales} />
-    <CreadorParlay partidos={partidosActuales} api={api} />
+    <CreadorParlay partidos={partidosActuales} api={api} liga={liga} />
     <div className="grid gap-6 lg:grid-cols-[1fr_330px]">
       <section>
         <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Partidos analizados</h2><span className="text-sm text-slate-400">{partidosActuales.length} encuentros</span></div>
@@ -207,7 +225,7 @@ export function App() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h2 className="mb-4 text-lg font-bold">Tabla general</h2><div className="space-y-2">{Array.isArray(tabla) && tabla.map((fila) => <div className="flex items-center gap-3 text-sm" key={fila.equipo}><span className="w-5 text-slate-500">{fila.posicion}</span><span className="flex-1 font-medium">{fila.equipo}<Forma valores={fila.forma} /></span><span className="font-bold text-cyan-300">{fila.puntos} pts</span></div>)}</div></section>
         <TablaGoleadores goleadores={goleadores} />
         <TablaAsistidores asistidores={asistidores} />
-        <ImportadorBoleto partidos={partidos} api={api} onGuardado={() => void cargarRendimiento()} />
+        <ImportadorBoleto partidos={partidos} api={api} liga={liga} onGuardado={() => void cargarRendimiento()} />
       </aside>
     </div>
   </div></main>;

@@ -3,12 +3,10 @@ import cors from 'cors';
 import express from 'express';
 import { configuracion } from './configuracion.js';
 import { construirAnalisis } from './servicios/analisis.js';
-import { guardarEstadisticas, guardarPartidos } from './servicios/persistencia.js';
-import { obtenerPartidos } from './servicios/proveedorDatos.js';
-import { obtenerTablaPosiciones } from './servicios/tablaPosiciones.js';
+import { guardarEstadisticas, guardarPartidos, leerPartidos, leerTablaPosiciones } from './servicios/persistencia.js';
 import { construirReporteLatex } from './servicios/exportadorLatex.js';
 import { obtenerRendimiento, registrarBoleto, resolverBoletosPendientes } from './servicios/ledgerBoletos.js';
-import { rasparAsistidores, rasparGoleadores, LIGAS_DISPONIBLES, type Liga } from './servicios/scraper.js';
+import { LIGAS_DISPONIBLES, type Liga } from './servicios/scraper.js';
 import { construirReporteCsv } from './servicios/exportadorCsv.js';
 import { calcularInterseccionMonteCarlo, simularPartidoMonteCarlo, type SeleccionMercado } from './servicios/simuladorMonteCarlo.js';
 import { iniciarTareasCron } from './servicios/tareasCron.js';
@@ -26,11 +24,9 @@ aplicacion.get('/api/salud', (_solicitud, respuesta) => respuesta.json({ estado:
 aplicacion.get('/api/partidos/hoy', async (solicitud, respuesta) => {
   try {
     const liga = ligaDesdeSolicitud(solicitud);
-    const [partidos, tabla, goleadores, asistidores] = await Promise.all([
-      obtenerPartidos(liga),
-      obtenerTablaPosiciones(liga),
-      rasparGoleadores(liga),
-      rasparAsistidores(liga)
+    const [partidos, tabla] = await Promise.all([
+      leerPartidos(liga),
+      leerTablaPosiciones(liga)
     ]);
     try {
       await Promise.all([guardarPartidos(partidos), guardarEstadisticas(tabla, new Date(), liga)]);
@@ -42,7 +38,7 @@ aplicacion.get('/api/partidos/hoy', async (solicitud, respuesta) => {
     } catch (error) {
       console.error('No se pudo resolver el ledger; se devuelve la jornada sin actualizar boletos:', error);
     }
-    respuesta.json(partidos.map((partido) => ({ ...construirAnalisis(partido, tabla), goleadores, asistidores })));
+    respuesta.json(partidos.map((partido) => ({ ...construirAnalisis(partido, tabla), goleadores: [], asistidores: [] })));
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
   }
@@ -51,7 +47,7 @@ aplicacion.get('/api/partidos/hoy', async (solicitud, respuesta) => {
 aplicacion.get('/api/partidos', async (solicitud, respuesta) => {
   try {
     const liga = ligaDesdeSolicitud(solicitud);
-    respuesta.json(await obtenerPartidos(liga));
+    respuesta.json(await leerPartidos(liga));
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
   }
@@ -59,7 +55,7 @@ aplicacion.get('/api/partidos', async (solicitud, respuesta) => {
 
 aplicacion.get('/api/goleadores', async (solicitud, respuesta) => {
   try {
-    respuesta.json(await rasparGoleadores(ligaDesdeSolicitud(solicitud)));
+    respuesta.json([]);
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
   }
@@ -67,7 +63,7 @@ aplicacion.get('/api/goleadores', async (solicitud, respuesta) => {
 
 aplicacion.get('/api/asistidores', async (solicitud, respuesta) => {
   try {
-    respuesta.json(await rasparAsistidores(ligaDesdeSolicitud(solicitud)));
+    respuesta.json([]);
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
   }
@@ -83,7 +79,7 @@ aplicacion.post('/api/boletos', async (solicitud, respuesta) => {
 
 aplicacion.post('/api/boletos/importar', async (solicitud, respuesta) => {
   try {
-    const { externoId, selecciones, cuotaTotal, montoApostado, estado, valorEsperado = 0 } = solicitud.body ?? {};
+    const { externoId, liga, selecciones, cuotaTotal, montoApostado, estado, valorEsperado = 0 } = solicitud.body ?? {};
     if (!externoId || !Array.isArray(selecciones) || selecciones.length === 0 || !Number.isFinite(cuotaTotal) || cuotaTotal < 1 || !Number.isFinite(montoApostado) || montoApostado <= 0) {
       return respuesta.status(400).json({ error: 'El boleto importado requiere partido, selecciones, cuota total y monto apostado.' });
     }
@@ -98,7 +94,8 @@ aplicacion.post('/api/boletos/importar', async (solicitud, respuesta) => {
       montoApostado,
       valorEsperado,
       estado: estadoNormalizado,
-      retornoNeto
+      retornoNeto,
+      liga
     });
     return respuesta.status(201).json(boleto);
   } catch (error) {
@@ -117,12 +114,7 @@ aplicacion.get('/api/boletos/historial', async (solicitud, respuesta) => {
 aplicacion.get('/api/tabla-posiciones', async (solicitud, respuesta) => {
   try {
     const liga = ligaDesdeSolicitud(solicitud);
-    const tabla = await obtenerTablaPosiciones(liga);
-    try {
-      await guardarEstadisticas(tabla, new Date(), liga);
-    } catch (error) {
-      console.error('No se pudo persistir la tabla raspada; se devuelve el dato en vivo:', error);
-    }
+    const tabla = await leerTablaPosiciones(liga);
     respuesta.json(tabla);
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
@@ -132,7 +124,7 @@ aplicacion.get('/api/tabla-posiciones', async (solicitud, respuesta) => {
 aplicacion.post('/api/exportar/reporte-latex', async (solicitud, respuesta) => {
   try {
     const liga = ligaDesdeSolicitud(solicitud);
-    const [partidos, tabla] = await Promise.all([obtenerPartidos(liga), obtenerTablaPosiciones(liga)]);
+    const [partidos, tabla] = await Promise.all([leerPartidos(liga), leerTablaPosiciones(liga)]);
     const analisis = partidos.map((partido) => construirAnalisis(partido, tabla));
     const boletos = Array.isArray(solicitud.body?.boletos) ? solicitud.body.boletos : [];
     const rendimiento = await obtenerRendimiento().catch(() => undefined);
@@ -149,8 +141,8 @@ aplicacion.get('/api/exportar/csv', async (solicitud, respuesta) => {
   try {
     const liga = ligaDesdeSolicitud(solicitud);
     const [partidos, tabla, rendimiento] = await Promise.all([
-      obtenerPartidos(liga),
-      obtenerTablaPosiciones(liga),
+      leerPartidos(liga),
+      leerTablaPosiciones(liga),
       obtenerRendimiento()
     ]);
     const analisis = partidos.map((partido) => construirAnalisis(partido, tabla));
@@ -176,7 +168,7 @@ aplicacion.post('/api/apuestas-combinadas/calcular', async (solicitud, respuesta
       return respuesta.status(400).json({ error: 'El Bet Builder requiere selecciones válidas.' });
     }
     const liga = ligaDesdeSolicitud(solicitud);
-    const [partidos, tabla] = await Promise.all([obtenerPartidos(liga), obtenerTablaPosiciones(liga)]);
+    const [partidos, tabla] = await Promise.all([leerPartidos(liga), leerTablaPosiciones(liga)]);
     const partidosPorId = new Map(partidos.map((partido) => [partido.externoId, partido]));
     const grupos = new Map<string, typeof entradas>();
     for (const entrada of entradas) grupos.set(entrada.externoId, [...(grupos.get(entrada.externoId) ?? []), entrada]);

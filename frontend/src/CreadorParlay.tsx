@@ -47,7 +47,7 @@ function nombreSeleccion(seleccion: SeleccionParlay, partido?: PartidoParlay): s
   }[seleccion];
 }
 
-export function CreadorParlay({ partidos, api }: { partidos: PartidoParlay[]; api: string }) {
+export function CreadorParlay({ partidos, api, liga }: { partidos: PartidoParlay[]; api: string; liga: string }) {
   const [partidoId, setPartidoId] = useState('');
   const [seleccion, setSeleccion] = useState<SeleccionParlay>('local');
   const [carrito, setCarrito] = useState<SeleccionCarrito[]>([]);
@@ -72,7 +72,7 @@ export function CreadorParlay({ partidos, api }: { partidos: PartidoParlay[]; ap
     void fetch(`${api}/apuestas-combinadas/calcular`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selecciones: carrito.map(({ externoId, seleccion, cuota }) => ({ externoId, seleccion, cuota })) }),
+      body: JSON.stringify({ liga, selecciones: carrito.map(({ externoId, seleccion, cuota }) => ({ externoId, seleccion, cuota })) }),
       signal: controlador.signal
     }).then(async (respuesta) => {
       const datos = await respuesta.json() as ResultadoParlay & { error?: string };
@@ -83,7 +83,7 @@ export function CreadorParlay({ partidos, api }: { partidos: PartidoParlay[]; ap
       if (!controlador.signal.aborted) setError(fallo instanceof Error ? fallo.message : 'No se pudo calcular la combinada.');
     });
     return () => controlador.abort();
-  }, [api, carrito]);
+  }, [api, liga, carrito]);
 
   const porcentaje = useMemo(() => (resultado?.probabilidad ?? 0) * 100, [resultado]);
   const agregar = () => {

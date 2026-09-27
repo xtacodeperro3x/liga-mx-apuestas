@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 type PartidoImportable = { externoId: string; local: string; visitante: string };
 
-export function ImportadorBoleto({ partidos, api, onGuardado }: { partidos: PartidoImportable[]; api: string; onGuardado: () => void }) {
+export function ImportadorBoleto({ partidos, api, liga, onGuardado }: { partidos: PartidoImportable[]; api: string; liga: string; onGuardado: () => void }) {
   const [partidoId, setPartidoId] = useState('');
   const [selecciones, setSelecciones] = useState('Ambos Anotan (Sí) + Más de 8.5 córners');
   const [cuotaTotal, setCuotaTotal] = useState('2.45');
@@ -24,7 +24,7 @@ export function ImportadorBoleto({ partidos, api, onGuardado }: { partidos: Part
     const respuesta = await fetch(`${api}/boletos/importar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ externoId: partido.externoId, selecciones: lista, cuotaTotal: cuota, montoApostado: apuesta, estado })
+      body: JSON.stringify({ externoId: partido.externoId, liga, selecciones: lista, cuotaTotal: cuota, montoApostado: apuesta, estado })
     });
     const datos = await respuesta.json() as { error?: string };
     if (!respuesta.ok) {
