@@ -69,10 +69,10 @@ export function CreadorParlay({ partidos, api, liga }: { partidos: PartidoParlay
       return;
     }
     const controlador = new AbortController();
-    void fetch(`${api}/apuestas-combinadas/calcular`, {
+    void fetch(`${api}/apuestas-combinadas/calcular?liga=${encodeURIComponent(liga)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ liga, selecciones: carrito.map(({ externoId, seleccion, cuota }) => ({ externoId, seleccion, cuota })) }),
+      body: JSON.stringify({ selecciones: carrito.map(({ externoId, seleccion, cuota }) => ({ externoId, seleccion, cuota })) }),
       signal: controlador.signal
     }).then(async (respuesta) => {
       const datos = await respuesta.json() as ResultadoParlay & { error?: string };

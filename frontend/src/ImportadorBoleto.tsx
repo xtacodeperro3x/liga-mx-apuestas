@@ -21,7 +21,7 @@ export function ImportadorBoleto({ partidos, api, liga, onGuardado }: { partidos
       setMensaje('Completa selecciones, cuota y monto con valores válidos.');
       return;
     }
-    const respuesta = await fetch(`${api}/boletos/importar`, {
+    const respuesta = await fetch(`${api}/boletos/importar?liga=${encodeURIComponent(liga)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ externoId: partido.externoId, liga, selecciones: lista, cuotaTotal: cuota, montoApostado: apuesta, estado })

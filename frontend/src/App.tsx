@@ -26,6 +26,7 @@ type Rendimiento = { total: number; resueltos: number; ganados: number; apostado
 type Goleador = { nombre: string; equipo: string; goles: number };
 type Asistidor = { nombre: string; equipo: string; asistencias: number };
 type DatosLiga = { partidos: Partido[]; tabla: Posicion[]; goleadores: Goleador[]; asistidores: Asistidor[] };
+type DatosRendimiento = { boletos: Array<{ id: number; seleccion: string; cuota: number; montoApostado: number; estado: string; retornoNeto: number | null }>; resumen: Rendimiento };
 const api = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
 type Liga = 'LIGA_MX' | 'PREMIER_LEAGUE' | 'LA_LIGA' | 'SERIE_A';
 const ligas: Array<{ clave: Liga; nombre: string }> = [
@@ -99,19 +100,23 @@ export function App() {
   const [error, setError] = useState('');
   const [goleadores, setGoleadores] = useState<Goleador[]>([]);
   const [asistidores, setAsistidores] = useState<Asistidor[]>([]);
-  const [rendimiento, setRendimiento] = useState<{ boletos: Array<{ id: number; seleccion: string; cuota: number; montoApostado: number; estado: string; retornoNeto: number | null }>; resumen: Rendimiento }>({ boletos: [], resumen: { total: 0, resueltos: 0, ganados: 0, apostado: 0, retornoNeto: 0, roi: 0, yield: 0 } });
+  const [rendimiento, setRendimiento] = useState<DatosRendimiento>({ boletos: [], resumen: { total: 0, resueltos: 0, ganados: 0, apostado: 0, retornoNeto: 0, roi: 0, yield: 0 } });
   const [liga, setLiga] = useState<Liga>('LIGA_MX');
   const [cacheLigas, setCacheLigas] = useState<Partial<Record<Liga, DatosLiga>>>({});
+  const [cacheRendimiento, setCacheRendimiento] = useState<Partial<Record<Liga, DatosRendimiento>>>({});
 
   const cargarRendimiento = async () => {
     const respuesta = await fetch(`${api}/boletos/historial?liga=${liga}`);
-    if (respuesta.ok) setRendimiento(await respuesta.json() as typeof rendimiento);
+    if (respuesta.ok) {
+      const datos = await respuesta.json() as DatosRendimiento;
+      setRendimiento(datos);
+      setCacheRendimiento((actual) => ({ ...actual, [liga]: datos }));
+    }
   };
 
   useEffect(() => {
     let montado = true;
     const cargarDatos = async () => {
-      setIsLoading(true);
       setError('');
       const cache = cacheLigas[liga];
       if (cache) {
@@ -119,9 +124,11 @@ export function App() {
         setTabla(cache.tabla);
         setGoleadores(cache.goleadores);
         setAsistidores(cache.asistidores);
+        if (cacheRendimiento[liga]) setRendimiento(cacheRendimiento[liga]!);
         setIsLoading(false);
         return;
       }
+      setIsLoading(true);
       try {
         const [respuestaPartidos, respuestaTabla] = await Promise.all([
           fetch(`${api}/partidos/hoy?liga=${liga}`),
@@ -164,9 +171,9 @@ export function App() {
       }
     };
     void cargarDatos();
-    void cargarRendimiento();
+    if (!cacheRendimiento[liga]) void cargarRendimiento();
     return () => { montado = false; };
-  }, [liga, cacheLigas]);
+  }, [liga, cacheLigas, cacheRendimiento]);
 
   const partidoSeleccionado = Array.isArray(partidos)
     ? partidos.find((partido) => `${partido.local} vs ${partido.visitante}` === seleccionPartido)
@@ -193,7 +200,7 @@ export function App() {
   const registrarBoleto = async () => {
     if (!evaluacion || !partidoSeleccionado) return;
     setBoletos((actuales) => [...actuales, { ...evaluacion, externoId: partidoSeleccionado.externoId, partido: seleccionPartido, seleccion }]);
-    const respuesta = await fetch(`${api}/boletos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ externoId: partidoSeleccionado.externoId, liga, seleccion, cuota: evaluacion.cuota, montoApostado: evaluacion.monto, valorEsperado: evaluacion.ev }) });
+    const respuesta = await fetch(`${api}/boletos?liga=${encodeURIComponent(liga)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ externoId: partidoSeleccionado.externoId, liga, seleccion, cuota: evaluacion.cuota, montoApostado: evaluacion.monto, valorEsperado: evaluacion.ev }) });
     if (respuesta.ok) await cargarRendimiento();
     else setError('No se pudo guardar el boleto en el historial.');
   };

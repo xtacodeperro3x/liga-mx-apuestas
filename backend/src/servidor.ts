@@ -3,9 +3,9 @@ import cors from 'cors';
 import express from 'express';
 import { configuracion } from './configuracion.js';
 import { construirAnalisis } from './servicios/analisis.js';
-import { guardarEstadisticas, guardarPartidos, leerPartidos, leerTablaPosiciones } from './servicios/persistencia.js';
+import { leerPartidos, leerTablaPosiciones } from './servicios/persistencia.js';
 import { construirReporteLatex } from './servicios/exportadorLatex.js';
-import { obtenerRendimiento, registrarBoleto, resolverBoletosPendientes } from './servicios/ledgerBoletos.js';
+import { obtenerRendimiento, registrarBoleto } from './servicios/ledgerBoletos.js';
 import { LIGAS_DISPONIBLES, type Liga } from './servicios/scraper.js';
 import { construirReporteCsv } from './servicios/exportadorCsv.js';
 import { calcularInterseccionMonteCarlo, simularPartidoMonteCarlo, type SeleccionMercado } from './servicios/simuladorMonteCarlo.js';
@@ -28,16 +28,6 @@ aplicacion.get('/api/partidos/hoy', async (solicitud, respuesta) => {
       leerPartidos(liga),
       leerTablaPosiciones(liga)
     ]);
-    try {
-      await Promise.all([guardarPartidos(partidos), guardarEstadisticas(tabla, new Date(), liga)]);
-    } catch (error) {
-      console.error('No se pudo persistir la jornada raspada; se devuelve el dato en vivo:', error);
-    }
-    try {
-      await resolverBoletosPendientes();
-    } catch (error) {
-      console.error('No se pudo resolver el ledger; se devuelve la jornada sin actualizar boletos:', error);
-    }
     respuesta.json(partidos.map((partido) => ({ ...construirAnalisis(partido, tabla), goleadores: [], asistidores: [] })));
   } catch (error) {
     respuesta.status(502).json({ error: error instanceof Error ? error.message : 'Error de proveedor' });
@@ -71,7 +61,7 @@ aplicacion.get('/api/asistidores', async (solicitud, respuesta) => {
 
 aplicacion.post('/api/boletos', async (solicitud, respuesta) => {
   try {
-    respuesta.status(201).json(await registrarBoleto(solicitud.body));
+    respuesta.status(201).json(await registrarBoleto({ ...solicitud.body, liga: ligaDesdeSolicitud(solicitud) }));
   } catch (error) {
     respuesta.status(400).json({ error: error instanceof Error ? error.message : 'No se pudo registrar el boleto' });
   }
@@ -79,7 +69,8 @@ aplicacion.post('/api/boletos', async (solicitud, respuesta) => {
 
 aplicacion.post('/api/boletos/importar', async (solicitud, respuesta) => {
   try {
-    const { externoId, liga, selecciones, cuotaTotal, montoApostado, estado, valorEsperado = 0 } = solicitud.body ?? {};
+    const { externoId, selecciones, cuotaTotal, montoApostado, estado, valorEsperado = 0 } = solicitud.body ?? {};
+    const liga = ligaDesdeSolicitud(solicitud);
     if (!externoId || !Array.isArray(selecciones) || selecciones.length === 0 || !Number.isFinite(cuotaTotal) || cuotaTotal < 1 || !Number.isFinite(montoApostado) || montoApostado <= 0) {
       return respuesta.status(400).json({ error: 'El boleto importado requiere partido, selecciones, cuota total y monto apostado.' });
     }
@@ -127,7 +118,7 @@ aplicacion.post('/api/exportar/reporte-latex', async (solicitud, respuesta) => {
     const [partidos, tabla] = await Promise.all([leerPartidos(liga), leerTablaPosiciones(liga)]);
     const analisis = partidos.map((partido) => construirAnalisis(partido, tabla));
     const boletos = Array.isArray(solicitud.body?.boletos) ? solicitud.body.boletos : [];
-    const rendimiento = await obtenerRendimiento().catch(() => undefined);
+    const rendimiento = await obtenerRendimiento(liga).catch(() => undefined);
     const documento = construirReporteLatex(analisis, boletos, rendimiento?.resumen);
     respuesta.setHeader('Content-Type', 'application/x-tex; charset=utf-8');
     respuesta.setHeader('Content-Disposition', 'attachment; filename="bitacora-liga-mx.tex"');
@@ -143,7 +134,7 @@ aplicacion.get('/api/exportar/csv', async (solicitud, respuesta) => {
     const [partidos, tabla, rendimiento] = await Promise.all([
       leerPartidos(liga),
       leerTablaPosiciones(liga),
-      obtenerRendimiento()
+      obtenerRendimiento(liga)
     ]);
     const analisis = partidos.map((partido) => construirAnalisis(partido, tabla));
     const opciones = analisis.flatMap((partido) => partido.apuestas
